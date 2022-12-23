@@ -19,10 +19,13 @@ Use the template below to make assigning a version number during the release cut
 
 -->
 
-## Nimbus
+## Nimbus ⛅️🔬🔭
 
 ### What's Changed
   - Fixed an issue where the NimbusQueues protocol was missing from the NimbusApi ([#5298](https://github.com/mozilla/application-services/pull/5298))
+
+### ✨ What's New ✨
+  - Introduced the `NimbusBuilder` for Swift ([#5307](https://github.com/mozilla/application-services/pull/5307))
 
 ## Tabs
 
