@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["import","This import is used for iOS users migrating from `browser.db`-based history storage to the new rust-places store."]]};

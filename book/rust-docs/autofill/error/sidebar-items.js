@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["AutofillApiError",""],["Error",""]],"type":[["ApiResult","Result enum for the public API"],["Result","Result enum for internal functions"]]};

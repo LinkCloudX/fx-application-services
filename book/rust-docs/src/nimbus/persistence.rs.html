@@ -1,0 +1,1078 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `components/nimbus/src/persistence.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>persistence.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../nimbus/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../nimbus/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../nimbus/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+</pre><pre class="rust"><code><span class="comment">/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+</span><span class="doccomment">//! Our storage abstraction, currently backed by Rkv.
+
+</span><span class="kw">use </span><span class="kw">crate</span>::error::{NimbusError, <span class="prelude-ty">Result</span>};
+<span class="comment">// This uses the lmdb backend for rkv, which is unstable.
+// We use it for now since glean didn&#39;t seem to have trouble with it (although
+// it must be noted that the rkv documentation explicitly says &quot;To use rkv in
+// production/release environments at Mozilla, you may do so with the &quot;SafeMode&quot;
+// backend&quot;, so we really should get more guidance here.)
+</span><span class="kw">use </span><span class="kw">crate</span>::enrollment::ExperimentEnrollment;
+<span class="kw">use </span><span class="kw">crate</span>::Experiment;
+<span class="kw">use </span>core::iter::Iterator;
+<span class="kw">use </span>rkv::{StoreError, StoreOptions};
+<span class="kw">use </span>std::collections::HashSet;
+<span class="kw">use </span>std::fs;
+<span class="kw">use </span>std::path::Path;
+
+<span class="comment">// We use an incrementing integer to manage database migrations.
+// If you need to make a backwards-incompatible change to the data schema,
+// increment `DB_VERSION` and implement some migration logic in `maybe_upgrade`.
+//
+// ⚠️ Warning : Altering the type of `DB_VERSION` would itself require a DB migration. ⚠️
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>DB_KEY_DB_VERSION: <span class="kw-2">&amp;</span>str = <span class="string">&quot;db_version&quot;</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const </span>DB_VERSION: u16 = <span class="number">2</span>;
+<span class="kw">const </span>RKV_MAX_DBS: u32 = <span class="number">6</span>;
+
+<span class="comment">// Inspired by Glean - use a feature to choose between the backends.
+// Select the LMDB-powered storage backend when the feature is not activated.
+</span><span class="attribute">#[cfg(not(feature = <span class="string">&quot;rkv-safe-mode&quot;</span>))]
+</span><span class="kw">mod </span>backend {
+    <span class="kw">use </span>rkv::backend::{
+        Lmdb, LmdbDatabase, LmdbEnvironment, LmdbRoCursor, LmdbRoTransaction, LmdbRwTransaction,
+    };
+    <span class="kw">use </span>std::path::Path;
+
+    <span class="kw">use </span><span class="kw">super</span>::RKV_MAX_DBS;
+
+    <span class="kw">pub type </span>Rkv = rkv::Rkv&lt;LmdbEnvironment&gt;;
+    <span class="kw">pub type </span>RkvSingleStore = rkv::SingleStore&lt;LmdbDatabase&gt;;
+    <span class="kw">pub type </span>Reader&lt;<span class="lifetime">&#39;t</span>&gt; = rkv::Reader&lt;LmdbRoTransaction&lt;<span class="lifetime">&#39;t</span>&gt;&gt;;
+    <span class="kw">pub type </span>Writer&lt;<span class="lifetime">&#39;t</span>&gt; = rkv::Writer&lt;LmdbRwTransaction&lt;<span class="lifetime">&#39;t</span>&gt;&gt;;
+    <span class="kw">pub trait </span>Readable&lt;<span class="lifetime">&#39;r</span>&gt;:
+        rkv::Readable&lt;<span class="lifetime">&#39;r</span>, Database = LmdbDatabase, RoCursor = LmdbRoCursor&lt;<span class="lifetime">&#39;r</span>&gt;&gt;
+    {
+    }
+    <span class="kw">impl</span>&lt;<span class="lifetime">&#39;r</span>, T: rkv::Readable&lt;<span class="lifetime">&#39;r</span>, Database = LmdbDatabase, RoCursor = LmdbRoCursor&lt;<span class="lifetime">&#39;r</span>&gt;&gt;&gt;
+        Readable&lt;<span class="lifetime">&#39;r</span>&gt; <span class="kw">for </span>T
+    {
+    }
+
+    <span class="kw">pub fn </span>rkv_new(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;Rkv, rkv::StoreError&gt; {
+        Rkv::with_capacity::&lt;Lmdb&gt;(path, RKV_MAX_DBS)
+    }
+}
+
+<span class="comment">// Select the &quot;safe mode&quot; storage backend when the feature is activated.
+</span><span class="attribute">#[cfg(feature = <span class="string">&quot;rkv-safe-mode&quot;</span>)]
+</span><span class="kw">mod </span>backend {
+    <span class="kw">use </span>rkv::backend::{
+        SafeMode, SafeModeDatabase, SafeModeEnvironment, SafeModeRoCursor, SafeModeRoTransaction,
+        SafeModeRwTransaction,
+    };
+    <span class="kw">use </span>std::path::Path;
+
+    <span class="kw">use </span><span class="kw">super</span>::RKV_MAX_DBS;
+
+    <span class="kw">pub type </span>Rkv = rkv::Rkv&lt;SafeModeEnvironment&gt;;
+    <span class="kw">pub type </span>RkvSingleStore = rkv::SingleStore&lt;SafeModeDatabase&gt;;
+    <span class="kw">pub type </span>Reader&lt;<span class="lifetime">&#39;t</span>&gt; = rkv::Reader&lt;SafeModeRoTransaction&lt;<span class="lifetime">&#39;t</span>&gt;&gt;;
+    <span class="kw">pub type </span>Writer&lt;<span class="lifetime">&#39;t</span>&gt; = rkv::Writer&lt;SafeModeRwTransaction&lt;<span class="lifetime">&#39;t</span>&gt;&gt;;
+    <span class="kw">pub trait </span>Readable&lt;<span class="lifetime">&#39;r</span>&gt;:
+        rkv::Readable&lt;<span class="lifetime">&#39;r</span>, Database = SafeModeDatabase, RoCursor = SafeModeRoCursor&lt;<span class="lifetime">&#39;r</span>&gt;&gt;
+    {
+    }
+    <span class="kw">impl</span>&lt;
+            <span class="lifetime">&#39;r</span>,
+            T: rkv::Readable&lt;<span class="lifetime">&#39;r</span>, Database = SafeModeDatabase, RoCursor = SafeModeRoCursor&lt;<span class="lifetime">&#39;r</span>&gt;&gt;,
+        &gt; Readable&lt;<span class="lifetime">&#39;r</span>&gt; <span class="kw">for </span>T
+    {
+    }
+
+    <span class="kw">pub fn </span>rkv_new(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;Rkv, rkv::StoreError&gt; {
+        Rkv::with_capacity::&lt;SafeMode&gt;(path, RKV_MAX_DBS)
+    }
+}
+
+<span class="kw">use </span>backend::<span class="kw-2">*</span>;
+<span class="kw">pub use </span>backend::{Readable, Writer};
+
+<span class="doccomment">/// Enumeration of the different stores within our database.
+///
+/// Our rkv database contains a number of different &quot;stores&quot;, and the items
+/// in each store correspond to a particular type of object at the Rust level.
+</span><span class="kw">pub enum </span>StoreId {
+    <span class="doccomment">/// Store containing the set of known experiments, as read from the server.
+    ///
+    /// Keys in the `Experiments` store are experiment identifier slugs, and their
+    /// corresponding values are  serialized instances of the [`Experiment`] struct
+    /// representing the last known state of that experiment.
+    </span>Experiments,
+    <span class="doccomment">/// Store containing the set of known experiment enrollments.
+    ///
+    /// Keys in the `Enrollments` store are experiment identifier slugs, and their
+    /// corresponding values are serialized instances of the [`ExperimentEnrollment`]
+    /// struct representing the current state of this client&#39;s enrollment (or not)
+    /// in that experiment.
+    </span>Enrollments,
+    <span class="doccomment">/// Store containing miscellaneous metadata about this client instance.
+    ///
+    /// Keys in the `Meta` store are string constants, and their corresponding values
+    /// are serialized items whose type depends on the constant. Known constaints
+    /// include:
+    ///   * &quot;db_version&quot;:   u16, the version number of the most revent migration
+    ///                     applied to this database.
+    ///   * &quot;nimbus-id&quot;:    String, the randomly-generated identifier for the
+    ///                     current client instance.
+    ///   * &quot;user-opt-in&quot;:  bool, whether the user has explicitly opted in or out
+    ///                     of participating in experiments.
+    ///   * &quot;installation-date&quot;: a UTC DateTime string, defining the date the consuming app was
+    ///                     installed
+    ///   * &quot;update-date&quot;: a UTC DateTime string, defining the date the consuming app was
+    ///                     last updated
+    ///   * &quot;app-version&quot;: String, the version of the app last persisted
+    </span>Meta,
+    <span class="doccomment">/// Store containing pending updates to experiment data.
+    ///
+    /// The `Updates` store contains a single key &quot;pending-experiment-updates&quot;, whose
+    /// corresponding value is a serialized `Vec&lt;Experiment&gt;` of new experiment data
+    /// that has been received from the server but not yet processed by the application.
+    </span>Updates,
+    <span class="doccomment">/// Store containing collected counts of behavior events for targeting purposes.
+    ///
+    /// Keys in the `EventCounts` store are strings representing the identifier for
+    /// the event and their corresponding values represent a serialized instance of a
+    /// [`MultiIntervalCounter`] struct that contains a set of configurations and data
+    /// for the different time periods that the data will be aggregated on.
+    </span>EventCounts,
+}
+
+<span class="doccomment">/// A wrapper for an Rkv store. Implemented to allow any value which supports
+/// serde to be used.
+</span><span class="kw">pub struct </span>SingleStore {
+    store: RkvSingleStore,
+}
+
+<span class="kw">impl </span>SingleStore {
+    <span class="kw">pub fn </span>new(store: RkvSingleStore) -&gt; <span class="self">Self </span>{
+        SingleStore { store }
+    }
+
+    <span class="kw">pub fn </span>put&lt;T: serde::Serialize + <span class="kw">for</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        writer: <span class="kw-2">&amp;mut </span>Writer,
+        key: <span class="kw-2">&amp;</span>str,
+        persisted_data: <span class="kw-2">&amp;</span>T,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>persisted_json = serde_json::to_string(persisted_data)<span class="question-mark">?</span>;
+        <span class="self">self</span>.store
+            .put(writer, key, <span class="kw-2">&amp;</span>rkv::Value::Json(<span class="kw-2">&amp;</span>persisted_json))<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="attribute">#[allow(dead_code)]
+    </span><span class="kw">pub fn </span>delete(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>Writer, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="self">self</span>.store.delete(writer, key)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">pub fn </span>clear(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>Writer) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="self">self</span>.store.clear(writer)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="comment">// Some &quot;get&quot; functions that cooperate with transactions (ie, so we can
+    // get what we&#39;ve written to the transaction before it&#39;s committed).
+    // It&#39;s unfortunate that these are duplicated with the DB itself, but the
+    // traits used by rkv make this tricky.
+    </span><span class="kw">pub fn </span>get&lt;<span class="lifetime">&#39;r</span>, T, R&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, reader: <span class="kw-2">&amp;</span><span class="lifetime">&#39;r </span>R, key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;T&gt;&gt;
+    <span class="kw">where
+        </span>R: Readable&lt;<span class="lifetime">&#39;r</span>&gt;,
+        T: serde::Serialize + <span class="kw">for</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt;,
+    {
+        <span class="kw">let </span>persisted_data = <span class="self">self</span>.store.get(reader, key)<span class="question-mark">?</span>;
+        <span class="kw">match </span>persisted_data {
+            <span class="prelude-val">Some</span>(data) =&gt; {
+                <span class="kw">if let </span>rkv::Value::Json(data) = data {
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(serde_json::from_str::&lt;T&gt;(data)<span class="question-mark">?</span>))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Err</span>(NimbusError::InvalidPersistedData)
+                }
+            }
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+        }
+    }
+
+    <span class="doccomment">/// Fork of collect_all that simply drops records that fail to read
+    /// rather than simply returning an error up the stack.  This likely
+    /// wants to be just a parameter to collect_all, but for now....
+    </span><span class="kw">pub fn </span>try_collect_all&lt;<span class="lifetime">&#39;r</span>, T, R&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, reader: <span class="kw-2">&amp;</span><span class="lifetime">&#39;r </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;T&gt;&gt;
+    <span class="kw">where
+        </span>R: Readable&lt;<span class="lifetime">&#39;r</span>&gt;,
+        T: serde::Serialize + <span class="kw">for</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt;,
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.store.iter_start(reader)<span class="question-mark">?</span>;
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, data))) = iter.next() {
+            <span class="kw">if let </span>rkv::Value::Json(data) = data {
+                <span class="kw">let </span>unserialized = serde_json::from_str::&lt;T&gt;(data);
+                <span class="kw">match </span>unserialized {
+                    <span class="prelude-val">Ok</span>(value) =&gt; result.push(value),
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="comment">// If there is an error, we won&#39;t push this onto the
+                        // result Vec, but we won&#39;t blow up the entire
+                        // deserialization either.
+                        </span><span class="macro">log::warn!</span>(
+                            <span class="string">&quot;try_collect_all: discarded a record while deserializing with: {:?}&quot;</span>,
+                            e
+                        );
+                        <span class="macro">log::warn!</span>(
+                            <span class="string">&quot;try_collect_all:   data that failed to deserialize: {:?}&quot;</span>,
+                            data
+                        );
+                    }
+                };
+            }
+        }
+        <span class="prelude-val">Ok</span>(result)
+    }
+
+    <span class="kw">pub fn </span>collect_all&lt;<span class="lifetime">&#39;r</span>, T, R&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, reader: <span class="kw-2">&amp;</span><span class="lifetime">&#39;r </span>R) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;T&gt;&gt;
+    <span class="kw">where
+        </span>R: Readable&lt;<span class="lifetime">&#39;r</span>&gt;,
+        T: serde::Serialize + <span class="kw">for</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt;,
+    {
+        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.store.iter_start(reader)<span class="question-mark">?</span>;
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, data))) = iter.next() {
+            <span class="kw">if let </span>rkv::Value::Json(data) = data {
+                result.push(serde_json::from_str::&lt;T&gt;(data)<span class="question-mark">?</span>);
+            }
+        }
+        <span class="prelude-val">Ok</span>(result)
+    }
+}
+
+<span class="doccomment">/// Database used to access persisted data
+/// This an abstraction around an Rkv database
+/// An instance on this database is created each time the component is loaded
+/// if there is persisted data, the `get` functions should retrieve it
+</span><span class="kw">pub struct </span>Database {
+    rkv: Rkv,
+    meta_store: SingleStore,
+    experiment_store: SingleStore,
+    enrollment_store: SingleStore,
+    updates_store: SingleStore,
+    event_count_store: SingleStore,
+}
+
+<span class="kw">impl </span>Database {
+    <span class="doccomment">/// Main constructor for a database
+    /// Initiates the Rkv database to be used to retreive persisted data
+    /// # Arguments
+    /// - `path`: A path to the persisted data, this is provided by the consuming application
+    </span><span class="kw">pub fn </span>new&lt;P: AsRef&lt;Path&gt;&gt;(path: P) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>rkv = <span class="self">Self</span>::open_rkv(path)<span class="question-mark">?</span>;
+        <span class="kw">let </span>meta_store = rkv.open_single(<span class="string">&quot;meta&quot;</span>, StoreOptions::create())<span class="question-mark">?</span>;
+        <span class="kw">let </span>experiment_store = rkv.open_single(<span class="string">&quot;experiments&quot;</span>, StoreOptions::create())<span class="question-mark">?</span>;
+        <span class="kw">let </span>enrollment_store = rkv.open_single(<span class="string">&quot;enrollments&quot;</span>, StoreOptions::create())<span class="question-mark">?</span>;
+        <span class="kw">let </span>updates_store = rkv.open_single(<span class="string">&quot;updates&quot;</span>, StoreOptions::create())<span class="question-mark">?</span>;
+        <span class="kw">let </span>event_count_store = rkv.open_single(<span class="string">&quot;event_counts&quot;</span>, StoreOptions::create())<span class="question-mark">?</span>;
+        <span class="kw">let </span>db = <span class="self">Self </span>{
+            rkv,
+            meta_store: SingleStore::new(meta_store),
+            experiment_store: SingleStore::new(experiment_store),
+            enrollment_store: SingleStore::new(enrollment_store),
+            updates_store: SingleStore::new(updates_store),
+            event_count_store: SingleStore::new(event_count_store),
+        };
+        db.maybe_upgrade()<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(db)
+    }
+
+    <span class="kw">fn </span>maybe_upgrade(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="macro">log::debug!</span>(<span class="string">&quot;entered maybe upgrade&quot;</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>writer = <span class="self">self</span>.rkv.write()<span class="question-mark">?</span>;
+        <span class="kw">let </span>db_version = <span class="self">self</span>.meta_store.get::&lt;u16, <span class="kw">_</span>&gt;(<span class="kw-2">&amp;</span>writer, DB_KEY_DB_VERSION)<span class="question-mark">?</span>;
+        <span class="kw">match </span>db_version {
+            <span class="prelude-val">Some</span>(DB_VERSION) =&gt; {
+                <span class="comment">// Already at the current version, no migration required.
+                </span><span class="macro">log::info!</span>(<span class="string">&quot;Already at version {}, no upgrade needed&quot;</span>, DB_VERSION);
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+            }
+            <span class="prelude-val">Some</span>(<span class="number">1</span>) =&gt; {
+                <span class="macro">log::info!</span>(<span class="string">&quot;Migrating database from v1 to v2&quot;</span>);
+                <span class="kw">match </span><span class="self">self</span>.migrate_v1_to_v2(<span class="kw-2">&amp;mut </span>writer) {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; (),
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="comment">// The idea here is that it&#39;s better to leave an
+                        // individual install with a clean empty database
+                        // than in an unknown inconsistent state, because it
+                        // allows them to start participating in experiments
+                        // again, rather than potentially repeating the upgrade
+                        // over and over at each embedding client restart.
+                        </span><span class="macro">error_support::report_error!</span>(
+                            <span class="string">&quot;nimbus-database-migration&quot;</span>,
+                            <span class="string">&quot;Error migrating database v1 to v2: {:?}.  Wiping experiments and enrollments&quot;</span>,
+                            e
+                        );
+                        <span class="self">self</span>.clear_experiments_and_enrollments(<span class="kw-2">&amp;mut </span>writer)<span class="question-mark">?</span>;
+                    }
+                };
+            }
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="macro">log::info!</span>(<span class="string">&quot;maybe_upgrade: no version number; wiping most stores&quot;</span>);
+                <span class="comment">// The &quot;first&quot; version of the database (= no version number) had un-migratable data
+                // for experiments and enrollments, start anew.
+                // XXX: We can most likely remove this behaviour once enough time has passed,
+                // since nimbus wasn&#39;t really shipped to production at the time anyway.
+                </span><span class="self">self</span>.clear_experiments_and_enrollments(<span class="kw-2">&amp;mut </span>writer)<span class="question-mark">?</span>;
+            }
+            <span class="kw">_ </span>=&gt; {
+                <span class="macro">error_support::report_error!</span>(
+                    <span class="string">&quot;nimbus-unknown-database-version&quot;</span>,
+                    <span class="string">&quot;Unknown database version. Wiping all stores.&quot;
+                </span>);
+                <span class="self">self</span>.clear_experiments_and_enrollments(<span class="kw-2">&amp;mut </span>writer)<span class="question-mark">?</span>;
+                <span class="self">self</span>.meta_store.clear(<span class="kw-2">&amp;mut </span>writer)<span class="question-mark">?</span>;
+            }
+        }
+        <span class="comment">// It is safe to clear the update store (i.e. the pending experiments) on all schema upgrades
+        // as it will be re-filled from the server on the next `fetch_experiments()`.
+        // The current contents of the update store may cause experiments to not load, or worse,
+        // accidentally unenroll.
+        </span><span class="self">self</span>.updates_store.clear(<span class="kw-2">&amp;mut </span>writer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.meta_store
+            .put(<span class="kw-2">&amp;mut </span>writer, DB_KEY_DB_VERSION, <span class="kw-2">&amp;</span>DB_VERSION)<span class="question-mark">?</span>;
+        writer.commit()<span class="question-mark">?</span>;
+        <span class="macro">log::debug!</span>(<span class="string">&quot;maybe_upgrade: transaction committed&quot;</span>);
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>clear_experiments_and_enrollments(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>Writer) -&gt; <span class="prelude-ty">Result</span>&lt;(), NimbusError&gt; {
+        <span class="self">self</span>.experiment_store.clear(writer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.enrollment_store.clear(writer)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>clear_event_count_data(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>Writer) -&gt; <span class="prelude-ty">Result</span>&lt;(), NimbusError&gt; {
+        <span class="self">self</span>.event_count_store.clear(writer)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Migrates a v1 database to v2
+    ///
+    /// Note that any Err returns from this function (including stuff
+    /// propagated up via the ? operator) will cause maybe_update (our caller)
+    /// to assume that this is unrecoverable and wipe the database, removing
+    /// people from any existing enrollments and blowing away their experiment
+    /// history, so that they don&#39;t get left in an inconsistent state.
+    </span><span class="kw">fn </span>migrate_v1_to_v2(<span class="kw-2">&amp;</span><span class="self">self</span>, writer: <span class="kw-2">&amp;mut </span>Writer) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="macro">log::info!</span>(<span class="string">&quot;Upgrading from version 1 to version 2&quot;</span>);
+
+        <span class="comment">// use try_collect_all to read everything except records that serde
+        // returns deserialization errors on.  Some logging of those errors
+        // happens, but it&#39;s not ideal.
+        </span><span class="kw">let </span>reader = <span class="self">self</span>.read()<span class="question-mark">?</span>;
+
+        <span class="comment">// XXX write a test to verify that we don&#39;t need to gc any
+        // enrollments that don&#39;t have experiments because the experiments
+        // were discarded either during try_collect_all (these wouldn&#39;t have been
+        // detected during the filtering phase) or during the filtering phase
+        // itself.  The test needs to run evolve_experiments, as that should
+        // correctly drop any orphans, even if the migrators aren&#39;t perfect.
+
+        </span><span class="kw">let </span>enrollments: Vec&lt;ExperimentEnrollment&gt; =
+            <span class="self">self</span>.enrollment_store.try_collect_all(<span class="kw-2">&amp;</span>reader)<span class="question-mark">?</span>;
+        <span class="kw">let </span>experiments: Vec&lt;Experiment&gt; = <span class="self">self</span>.experiment_store.try_collect_all(<span class="kw-2">&amp;</span>reader)<span class="question-mark">?</span>;
+
+        <span class="comment">// figure out which experiments have records that need to be dropped
+        // and log that we&#39;re going to drop them and why
+        </span><span class="kw">let </span>empty_string = <span class="string">&quot;&quot;</span>.to_string();
+        <span class="kw">let </span>slugs_with_experiment_issues: HashSet&lt;String&gt; = experiments
+            .iter()
+            .filter_map(
+                    |e| {
+                <span class="kw">let </span>branch_with_empty_feature_ids =
+                    e.branches.iter().find(|b| b.feature.is_none() || b.feature.as_ref().unwrap().feature_id.is_empty());
+                <span class="kw">if </span>branch_with_empty_feature_ids.is_some() {
+                    <span class="macro">log::warn!</span>(<span class="string">&quot;{:?} experiment has branch missing a feature prop; experiment &amp; enrollment will be discarded&quot;</span>, <span class="kw-2">&amp;</span>e.slug);
+                    <span class="prelude-val">Some</span>(e.slug.to_owned())
+                } <span class="kw">else if </span>e.feature_ids.is_empty() || e.feature_ids.contains(<span class="kw-2">&amp;</span>empty_string) {
+                    <span class="macro">log::warn!</span>(<span class="string">&quot;{:?} experiment has invalid feature_ids array; experiment &amp; enrollment will be discarded&quot;</span>, <span class="kw-2">&amp;</span>e.slug);
+                    <span class="prelude-val">Some</span>(e.slug.to_owned())
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            })
+            .collect();
+        <span class="kw">let </span>slugs_to_discard: HashSet&lt;<span class="kw">_</span>&gt; = slugs_with_experiment_issues;
+
+        <span class="comment">// filter out experiments to be dropped
+        </span><span class="kw">let </span>updated_experiments: Vec&lt;Experiment&gt; = experiments
+            .into_iter()
+            .filter(|e| !slugs_to_discard.contains(<span class="kw-2">&amp;</span>e.slug))
+            .collect();
+        <span class="macro">log::debug!</span>(<span class="string">&quot;updated experiments = {:?}&quot;</span>, updated_experiments);
+
+        <span class="comment">// filter out enrollments to be dropped
+        </span><span class="kw">let </span>updated_enrollments: Vec&lt;ExperimentEnrollment&gt; = enrollments
+            .into_iter()
+            .filter(|e| !slugs_to_discard.contains(<span class="kw-2">&amp;</span>e.slug))
+            .collect();
+        <span class="macro">log::debug!</span>(<span class="string">&quot;updated enrollments = {:?}&quot;</span>, updated_enrollments);
+
+        <span class="comment">// rewrite both stores
+        </span><span class="self">self</span>.experiment_store.clear(writer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>experiment <span class="kw">in </span>updated_experiments {
+            <span class="self">self</span>.experiment_store
+                .put(writer, <span class="kw-2">&amp;</span>experiment.slug, <span class="kw-2">&amp;</span>experiment)<span class="question-mark">?</span>;
+        }
+
+        <span class="self">self</span>.enrollment_store.clear(writer)<span class="question-mark">?</span>;
+        <span class="kw">for </span>enrollment <span class="kw">in </span>updated_enrollments {
+            <span class="self">self</span>.enrollment_store
+                .put(writer, <span class="kw-2">&amp;</span>enrollment.slug, <span class="kw-2">&amp;</span>enrollment)<span class="question-mark">?</span>;
+        }
+        <span class="macro">log::debug!</span>(<span class="string">&quot;exiting migrate_v1_to_v2&quot;</span>);
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Gets a Store object, which used with the writer returned by
+    /// `self.write()` to update the database in a transaction.
+    </span><span class="kw">pub fn </span>get_store(<span class="kw-2">&amp;</span><span class="self">self</span>, store_id: StoreId) -&gt; <span class="kw-2">&amp;</span>SingleStore {
+        <span class="kw">match </span>store_id {
+            StoreId::Meta =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.meta_store,
+            StoreId::Experiments =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.experiment_store,
+            StoreId::Enrollments =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.enrollment_store,
+            StoreId::Updates =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.updates_store,
+            StoreId::EventCounts =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.event_count_store,
+        }
+    }
+
+    <span class="kw">pub fn </span>open_rkv&lt;P: AsRef&lt;Path&gt;&gt;(path: P) -&gt; <span class="prelude-ty">Result</span>&lt;Rkv&gt; {
+        <span class="kw">let </span>path = std::path::Path::new(path.as_ref()).join(<span class="string">&quot;db&quot;</span>);
+        <span class="macro">log::debug!</span>(<span class="string">&quot;open_rkv: path =  {:?}&quot;</span>, path.display());
+        fs::create_dir_all(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>;
+        <span class="kw">let </span>rkv = <span class="kw">match </span>rkv_new(<span class="kw-2">&amp;</span>path) {
+            <span class="prelude-val">Ok</span>(rkv) =&gt; <span class="prelude-val">Ok</span>(rkv),
+            <span class="prelude-val">Err</span>(rkv_error) =&gt; {
+                <span class="kw">match </span>rkv_error {
+                    <span class="comment">// For some errors we just delete the DB and start again.
+                    </span>StoreError::DatabaseCorrupted | StoreError::FileInvalid =&gt; {
+                        <span class="comment">// On one hand this seems a little dangerous, but on
+                        // the other hand avoids us knowing about the
+                        // underlying implementation (ie, how do we know what
+                        // files might exist in all cases?)
+                        </span><span class="macro">log::warn!</span>(
+                            <span class="string">&quot;Database at &#39;{}&#39; appears corrupt - removing and recreating&quot;</span>,
+                            path.display()
+                        );
+                        fs::remove_dir_all(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>;
+                        fs::create_dir_all(<span class="kw-2">&amp;</span>path)<span class="question-mark">?</span>;
+                        <span class="comment">// TODO: Once we have glean integration we want to
+                        // record telemetry here.
+                        </span>rkv_new(<span class="kw-2">&amp;</span>path)
+                    }
+                    <span class="comment">// All other errors are fatal.
+                    </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(rkv_error),
+                }
+            }
+        }<span class="question-mark">?</span>;
+        <span class="macro">log::debug!</span>(<span class="string">&quot;Database initialized&quot;</span>);
+        <span class="prelude-val">Ok</span>(rkv)
+    }
+
+    <span class="doccomment">/// Function used to obtain a &quot;reader&quot; which is used for read-only transactions.
+    </span><span class="kw">pub fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Reader&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.rkv.read()<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Function used to obtain a &quot;writer&quot; which is used for transactions.
+    /// The `writer.commit();` must be called to commit data added via the
+    /// writer.
+    </span><span class="kw">pub fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Writer&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.rkv.write()<span class="question-mark">?</span>)
+    }
+
+    <span class="doccomment">/// Function used to retrieve persisted data outside of a transaction.
+    /// It allows retrieval of any serializable and deserializable data
+    /// Currently only supports JSON data
+    </span><span class="comment">// Only available for tests; product code should always be using transactions.
+    </span><span class="doccomment">///
+    /// # Arguments
+    /// - `key`: A key for the data stored in the underlying database
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>get&lt;T: serde::Serialize + <span class="kw">for</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        store_id: StoreId,
+        key: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;T&gt;&gt; {
+        <span class="kw">let </span>reader = <span class="self">self</span>.rkv.read()<span class="question-mark">?</span>;
+        <span class="kw">let </span>persisted_data = <span class="self">self</span>.get_store(store_id).store.get(<span class="kw-2">&amp;</span>reader, key)<span class="question-mark">?</span>;
+        <span class="kw">match </span>persisted_data {
+            <span class="prelude-val">Some</span>(data) =&gt; {
+                <span class="kw">if let </span>rkv::Value::Json(data) = data {
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(serde_json::from_str::&lt;T&gt;(data)<span class="question-mark">?</span>))
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Err</span>(NimbusError::InvalidPersistedData)
+                }
+            }
+            <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+        }
+    }
+
+    <span class="comment">// Function for collecting all items in a store outside of a transaction.
+    // Only available for tests; product code should always be using transactions.
+    // Iters are a bit tricky - would be nice to make them generic, but this will
+    // do for our use-case.
+    </span><span class="attribute">#[cfg(test)]
+    </span><span class="kw">pub fn </span>collect_all&lt;T: serde::Serialize + <span class="kw">for</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        store_id: StoreId,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;T&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>result = Vec::new();
+        <span class="kw">let </span>reader = <span class="self">self</span>.rkv.read()<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.get_store(store_id).store.iter_start(<span class="kw-2">&amp;</span>reader)<span class="question-mark">?</span>;
+        <span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, data))) = iter.next() {
+            <span class="kw">if let </span>rkv::Value::Json(data) = data {
+                result.push(serde_json::from_str::&lt;T&gt;(data)<span class="question-mark">?</span>);
+            }
+        }
+        <span class="prelude-val">Ok</span>(result)
+    }
+}
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="nimbus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

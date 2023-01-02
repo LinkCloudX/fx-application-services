@@ -1,0 +1,170 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `components/nimbus/src/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../nimbus/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../nimbus/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../nimbus/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+</pre><pre class="rust"><code><span class="comment">/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * */
+
+</span><span class="doccomment">//! Not complete yet
+//! This is where the error definitions can go
+//! TODO: Implement proper error handling, this would include defining the error enum,
+//! impl std::error::Error using `thiserror` and ensuring all errors are handled appropriately
+
+</span><span class="kw">use </span>std::num::{ParseIntError, TryFromIntError};
+<span class="attribute">#[derive(Debug, thiserror::Error)]
+</span><span class="kw">pub enum </span>NimbusError {
+    <span class="attribute">#[error(<span class="string">&quot;Invalid persisted data&quot;</span>)]
+    </span>InvalidPersistedData,
+    <span class="attribute">#[error(<span class="string">&quot;Rkv error: {0}&quot;</span>)]
+    </span>RkvError(<span class="attribute">#[from] </span>rkv::StoreError),
+    <span class="attribute">#[error(<span class="string">&quot;IO error: {0}&quot;</span>)]
+    </span>IOError(<span class="attribute">#[from] </span>std::io::Error),
+    <span class="attribute">#[error(<span class="string">&quot;JSON Error: {0}&quot;</span>)]
+    </span>JSONError(<span class="attribute">#[from] </span>serde_json::Error),
+    <span class="attribute">#[error(<span class="string">&quot;EvaluationError: {0}&quot;</span>)]
+    </span>EvaluationError(String),
+    <span class="attribute">#[error(<span class="string">&quot;Invalid Expression - didn&#39;t evaluate to a bool&quot;</span>)]
+    </span>InvalidExpression,
+    <span class="attribute">#[error(<span class="string">&quot;InvalidFractionError: Should be between 0 and 1&quot;</span>)]
+    </span>InvalidFraction,
+    <span class="attribute">#[error(<span class="string">&quot;TryInto error: {0}&quot;</span>)]
+    </span>TryFromSliceError(<span class="attribute">#[from] </span>std::array::TryFromSliceError),
+    <span class="attribute">#[error(<span class="string">&quot;Empty ratios!&quot;</span>)]
+    </span>EmptyRatiosError,
+    <span class="attribute">#[error(<span class="string">&quot;Attempt to access an element that is out of bounds&quot;</span>)]
+    </span>OutOfBoundsError,
+    <span class="attribute">#[error(<span class="string">&quot;Error parsing URL: {0}&quot;</span>)]
+    </span>UrlParsingError(<span class="attribute">#[from] </span>url::ParseError),
+    <span class="attribute">#[error(<span class="string">&quot;Error sending request: {0}&quot;</span>)]
+    </span>RequestError(<span class="attribute">#[from] </span>viaduct::Error),
+    <span class="attribute">#[error(<span class="string">&quot;UUID parsing error: {0}&quot;</span>)]
+    </span>UuidError(<span class="attribute">#[from] </span>uuid::Error),
+    <span class="attribute">#[error(<span class="string">&quot;Error in network response: {0}&quot;</span>)]
+    </span>ResponseError(String),
+    <span class="attribute">#[error(<span class="string">&quot;Invalid experiments response received&quot;</span>)]
+    </span>InvalidExperimentFormat,
+    <span class="attribute">#[error(<span class="string">&quot;Invalid path: {0}&quot;</span>)]
+    </span>InvalidPath(String),
+    <span class="attribute">#[error(<span class="string">&quot;Internal error: {0}&quot;</span>)]
+    </span>InternalError(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
+    <span class="attribute">#[error(<span class="string">&quot;The experiment {0} does not exist&quot;</span>)]
+    </span>NoSuchExperiment(String),
+    <span class="attribute">#[error(<span class="string">&quot;The branch {0} does not exist for the experiment {1}&quot;</span>)]
+    </span>NoSuchBranch(String, String),
+    <span class="attribute">#[error(<span class="string">&quot;Server asked the client to back off ({0} seconds remaining)&quot;</span>)]
+    </span>BackoffError(u64),
+    <span class="attribute">#[error(<span class="string">&quot;Initialization of the database is not yet complete&quot;</span>)]
+    </span>DatabaseNotReady,
+    <span class="attribute">#[error(<span class="string">&quot;Error parsing a sting into a version {0}&quot;</span>)]
+    </span>VersionParsingError(String),
+    <span class="attribute">#[error(<span class="string">&quot;Behavior error: {0}&quot;</span>)]
+    </span>BehaviorError(<span class="attribute">#[from] </span>BehaviorError),
+    <span class="attribute">#[error(<span class="string">&quot;TryFromIntError: {0}&quot;</span>)]
+    </span>TryFromIntError(<span class="attribute">#[from] </span>TryFromIntError),
+    <span class="attribute">#[error(<span class="string">&quot;ParseIntError: {0}&quot;</span>)]
+    </span>ParseIntError(<span class="attribute">#[from] </span>ParseIntError),
+    <span class="attribute">#[error(<span class="string">&quot;Transform parameter error: {0}&quot;</span>)]
+    </span>TransformParameterError(String),
+}
+
+<span class="attribute">#[derive(Debug, thiserror::Error)]
+</span><span class="kw">pub enum </span>BehaviorError {
+    <span class="attribute">#[error(<span class="string">&quot;Invalid state: {0}&quot;</span>)]
+    </span>InvalidState(String),
+    <span class="attribute">#[error(<span class="string">&quot;IntervalParseError: {0} is not a valid Interval&quot;</span>)]
+    </span>IntervalParseError(String),
+    <span class="attribute">#[error(<span class="string">&quot;The event store is not available on the targeting attributes&quot;</span>)]
+    </span>MissingEventStore,
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; From&lt;jexl_eval::error::EvaluationError&lt;<span class="lifetime">&#39;a</span>&gt;&gt; <span class="kw">for </span>NimbusError {
+    <span class="kw">fn </span>from(eval_error: jexl_eval::error::EvaluationError&lt;<span class="lifetime">&#39;a</span>&gt;) -&gt; <span class="self">Self </span>{
+        NimbusError::EvaluationError(eval_error.to_string())
+    }
+}
+
+<span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T, E = NimbusError&gt; = std::result::Result&lt;T, E&gt;;
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="nimbus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

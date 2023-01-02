@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["BookmarkType","Bookmark types."],["SyncStatus","Re SyncStatus - note that:"],["VisitTransition",""]],"struct":[["InvalidVisitType",""],["VisitTransitionSet",""]]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["Error",""]],"struct":[["UnexpectedStatus","This error is returned as the `Err` result from [`Response::require_success`]."]]};

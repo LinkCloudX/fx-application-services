@@ -1,0 +1,314 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `components/nimbus/src/sampling.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>sampling.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../nimbus/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../nimbus/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../nimbus/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+</pre><pre class="rust"><code><span class="comment">/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+</span><span class="doccomment">//! This module implements the sampling logic required to hash,
+//! randomize and pick branches using pre-set ratios.
+
+</span><span class="kw">use </span><span class="kw">crate</span>::error::{NimbusError, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>sha2::{Digest, Sha256};
+
+<span class="kw">const </span>HASH_BITS: u32 = <span class="number">48</span>;
+<span class="kw">const </span>HASH_LENGTH: u32 = HASH_BITS / <span class="number">4</span>;
+
+<span class="doccomment">/// Sample by splitting the input space into a series of buckets, checking
+/// if the given input is in a range of buckets
+///
+/// The range to check is defined by a start point and length, and can wrap around
+/// the input space. For example, if there are 100 buckets, and we ask to check 50 buckets
+/// starting from bucket 70, then buckets 70-99 and 0-19 will be checked
+///
+/// # Arguments:
+///
+/// - `input` What will be hashed and matched against the range of the buckets
+/// - `start` the index of the bucket to start checking
+/// - `count` then number of buckets to check
+/// - `total` The total number of buckets to group inputs into
+///
+/// # Returns:
+///
+/// Returns true if the hash generated from the input belongs within the range
+/// otherwise false
+///
+/// # Errors:
+///
+/// Could error in the following cases (but not limited to)
+/// - An error occured in the hashing process
+/// - an error occured while checking if the hash belongs in the bucket
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bucket_sample&lt;T: serde::Serialize&gt;(
+    input: T,
+    start: u32,
+    count: u32,
+    total: u32,
+) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+    <span class="kw">let </span>input_hash = hex::encode(truncated_hash(input)<span class="question-mark">?</span>);
+    <span class="kw">let </span>wrapped_start = start % total;
+    <span class="kw">let </span>end = wrapped_start + count;
+
+    <span class="prelude-val">Ok</span>(<span class="kw">if </span>end &gt; total {
+        is_hash_in_bucket(<span class="kw-2">&amp;</span>input_hash, <span class="number">0</span>, end % total, total)<span class="question-mark">?
+            </span>|| is_hash_in_bucket(<span class="kw-2">&amp;</span>input_hash, wrapped_start, total, total)<span class="question-mark">?
+    </span>} <span class="kw">else </span>{
+        is_hash_in_bucket(<span class="kw-2">&amp;</span>input_hash, wrapped_start, end, total)<span class="question-mark">?
+    </span>})
+}
+
+<span class="doccomment">/// Sample over a list of ratios such that, over the input space, each
+/// ratio has a number of matches in correct proportion to the other ratios
+///
+/// # Arguments:
+/// - `input`: the input used in the sampling process
+/// - `ratios`: The list of ratios associated with each option
+///
+/// # Example:
+///
+/// Assuming the ratios: `[1, 2, 3, 4]`
+/// 10% of all inputs will return 0, 20% will return 1 and so on
+///
+/// # Returns
+/// Returns an index of the ratio that matched the input
+///
+/// # Errors
+/// Could return an error if the input couldn&#39;t be hashed
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ratio_sample&lt;T: serde::Serialize&gt;(input: T, ratios: <span class="kw-2">&amp;</span>[u32]) -&gt; <span class="prelude-ty">Result</span>&lt;usize&gt; {
+    <span class="kw">if </span>ratios.is_empty() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(NimbusError::EmptyRatiosError);
+    }
+    <span class="kw">let </span>input_hash = hex::encode(truncated_hash(input)<span class="question-mark">?</span>);
+    <span class="kw">let </span>ratio_total: u32 = ratios.iter().sum();
+    <span class="kw">let </span><span class="kw-2">mut </span>sample_point = <span class="number">0</span>;
+    <span class="kw">for </span>(i, ratio) <span class="kw">in </span>ratios.iter().enumerate() {
+        sample_point += ratio;
+        <span class="kw">if </span>input_hash &lt;= fraction_to_key(sample_point <span class="kw">as </span>f64 / ratio_total <span class="kw">as </span>f64)<span class="question-mark">? </span>{
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(i);
+        }
+    }
+    <span class="prelude-val">Ok</span>(ratios.len() - <span class="number">1</span>)
+}
+
+<span class="doccomment">/// Provides a hash of `data`, truncated to the 6 most significant bytes
+/// For consistency with: https://searchfox.org/mozilla-central/source/toolkit/components/utils/Sampling.jsm#79
+/// # Arguments:
+/// - `data`: The data to be hashed
+///
+/// # Returns:
+/// Returns the 6 bytes associted with the SHA-256 of the data
+///
+/// # Errors:
+/// Would return an error if the hashing function fails to generate a hash
+/// that is larger than 6 bytes (Should never occur)
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>truncated_hash&lt;T: serde::Serialize&gt;(data: T) -&gt; <span class="prelude-ty">Result</span>&lt;[u8; <span class="number">6</span>]&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>hasher = Sha256::new();
+    <span class="kw">let </span>data_str = serde_json::to_string(<span class="kw-2">&amp;</span>data)<span class="question-mark">?</span>;
+    hasher.update(data_str.as_bytes());
+    <span class="prelude-val">Ok</span>(hasher.finalize()[<span class="number">0</span>..<span class="number">6</span>].try_into()<span class="question-mark">?</span>)
+}
+
+<span class="doccomment">/// Checks if a given hash (represented as a 6 byte hex string) fits within a bucket range
+///
+/// # Arguments:
+/// - `input_hash_num`: The hash as a 6 byte hex string (12 hex digits)
+/// - `min_bucket`: The minimum bucket number
+/// - `max_bucket`: The maximum bucket number
+/// - `bucket_count`: The number of buckets
+///
+/// # Returns
+/// Returns true if the has fits in the bucket range,
+/// otherwise false
+///
+/// # Errors:
+///
+/// Could return an error if bucket numbers are higher than the bucket count
+</span><span class="kw">fn </span>is_hash_in_bucket(
+    input_hash_num: <span class="kw-2">&amp;</span>str,
+    min_bucket: u32,
+    max_bucket: u32,
+    bucket_count: u32,
+) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+    <span class="kw">let </span>min_hash = fraction_to_key(min_bucket <span class="kw">as </span>f64 / bucket_count <span class="kw">as </span>f64)<span class="question-mark">?</span>;
+    <span class="kw">let </span>max_hash = fraction_to_key(max_bucket <span class="kw">as </span>f64 / bucket_count <span class="kw">as </span>f64)<span class="question-mark">?</span>;
+    <span class="prelude-val">Ok</span>(min_hash.as_str() &lt;= input_hash_num &amp;&amp; input_hash_num &lt; max_hash.as_str())
+}
+
+<span class="doccomment">/// Maps from the range [0, 1] to [0, 2^48]
+///
+/// # Argument:
+/// - `fraction`: float in the range 0-1
+///
+/// # Returns
+/// returns a hex string representing the fraction multiplied to be within the
+/// [0, 2^48] range
+///
+/// # Errors
+/// returns an error if the fraction not within the 0-1 range
+</span><span class="kw">fn </span>fraction_to_key(fraction: f64) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
+    <span class="kw">if </span>!(<span class="number">0.0</span>..=<span class="number">1.0</span>).contains(<span class="kw-2">&amp;</span>fraction) {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(NimbusError::InvalidFraction);
+    }
+    <span class="kw">let </span>multiplied = (fraction * (<span class="number">2u64</span>.pow(HASH_BITS) - <span class="number">1</span>) <span class="kw">as </span>f64).floor();
+    <span class="kw">let </span>multiplied = <span class="macro">format!</span>(<span class="string">&quot;{:x}&quot;</span>, multiplied <span class="kw">as </span>u64);
+    <span class="kw">let </span>padding = <span class="macro">vec!</span>[<span class="string">&#39;0&#39;</span>; HASH_LENGTH <span class="kw">as </span>usize - multiplied.len()];
+    <span class="kw">let </span>res = padding
+        .into_iter()
+        .chain(multiplied.chars())
+        .collect::&lt;String&gt;();
+    <span class="prelude-val">Ok</span>(res)
+}
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="nimbus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

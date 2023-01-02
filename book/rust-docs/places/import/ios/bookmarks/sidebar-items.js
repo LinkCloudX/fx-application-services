@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["IosBookmarkType",""]],"fn":[["import","This import is used for iOS sync users migrating from `browser.db`-based bookmark storage to the new rust-places store."]]};

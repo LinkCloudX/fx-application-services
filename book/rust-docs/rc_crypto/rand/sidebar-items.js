@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["fill","Fill a buffer with cryptographically secure pseudo-random data."]]};

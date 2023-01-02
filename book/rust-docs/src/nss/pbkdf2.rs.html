@@ -1,0 +1,156 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `components/support/rc_crypto/nss/src/pbkdf2.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>pbkdf2.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../nss/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../nss/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../nss/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+</pre><pre class="rust"><code><span class="comment">/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+</span><span class="kw">use </span><span class="kw">crate</span>::util::{ensure_nss_initialized, map_nss_secstatus, sec_item_as_slice, ScopedPtr};
+<span class="kw">use crate</span>::{
+    error::<span class="kw-2">*</span>,
+    pk11::{
+        slot::get_internal_slot,
+        types::{AlgorithmID, SymKey},
+    },
+};
+
+<span class="comment">// Expose for consumers to choose the hashing algorithm
+// Currently only SHA256 supported
+</span><span class="kw">pub use </span><span class="kw">crate</span>::pk11::context::HashAlgorithm;
+<span class="kw">use </span>nss_sys::SECOidTag;
+
+<span class="comment">// ***** BASED ON THE FOLLOWING IMPLEMENTATION *****
+// https://searchfox.org/mozilla-central/rev/8ccea36c4fb09412609fb738c722830d7098602b/dom/crypto/WebCryptoTask.cpp#2567
+
+</span><span class="kw">pub fn </span>pbkdf2_key_derive(
+    password: <span class="kw-2">&amp;</span>[u8],
+    salt: <span class="kw-2">&amp;</span>[u8],
+    iterations: u32,
+    hash_algorithm: HashAlgorithm,
+    out: <span class="kw-2">&amp;mut </span>[u8],
+) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    ensure_nss_initialized();
+    <span class="kw">let </span>oid_tag = <span class="kw">match </span>hash_algorithm {
+        HashAlgorithm::SHA256 =&gt; SECOidTag::SEC_OID_HMAC_SHA256 <span class="kw">as </span>u32,
+        HashAlgorithm::SHA384 =&gt; SECOidTag::SEC_OID_HMAC_SHA384 <span class="kw">as </span>u32,
+    };
+    <span class="kw">let </span><span class="kw-2">mut </span>sec_salt = nss_sys::SECItem {
+        len: u32::try_from(salt.len())<span class="question-mark">?</span>,
+        data: salt.as_ptr() <span class="kw">as </span><span class="kw-2">*mut </span>u8,
+        type_: <span class="number">0</span>,
+    };
+    <span class="kw">let </span>alg_id = <span class="kw">unsafe </span>{
+        AlgorithmID::from_ptr(nss_sys::PK11_CreatePBEV2AlgorithmID(
+            SECOidTag::SEC_OID_PKCS5_PBKDF2 <span class="kw">as </span>u32,
+            SECOidTag::SEC_OID_HMAC_SHA1 <span class="kw">as </span>u32,
+            oid_tag,
+            i32::try_from(out.len())<span class="question-mark">?</span>,
+            i32::try_from(iterations)<span class="question-mark">?</span>,
+            <span class="kw-2">&amp;mut </span>sec_salt <span class="kw">as </span><span class="kw-2">*mut </span>nss_sys::SECItem,
+        ))<span class="question-mark">?
+    </span>};
+
+    <span class="kw">let </span>slot = get_internal_slot()<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>sec_pw = nss_sys::SECItem {
+        len: u32::try_from(password.len())<span class="question-mark">?</span>,
+        data: password.as_ptr() <span class="kw">as </span><span class="kw-2">*mut </span>u8,
+        type_: <span class="number">0</span>,
+    };
+    <span class="kw">let </span>sym_key = <span class="kw">unsafe </span>{
+        SymKey::from_ptr(nss_sys::PK11_PBEKeyGen(
+            slot.as_mut_ptr(),
+            alg_id.as_mut_ptr(),
+            <span class="kw-2">&amp;mut </span>sec_pw <span class="kw">as </span><span class="kw-2">*mut </span>nss_sys::SECItem,
+            nss_sys::PR_FALSE,
+            std::ptr::null_mut(),
+        ))<span class="question-mark">?
+    </span>};
+    map_nss_secstatus(|| <span class="kw">unsafe </span>{ nss_sys::PK11_ExtractKeyValue(sym_key.as_mut_ptr()) })<span class="question-mark">?</span>;
+
+    <span class="comment">// This doesn&#39;t leak, because the SECItem* returned by PK11_GetKeyData
+    // just refers to a buffer managed by `sym_key` which we copy into `buf`
+    </span><span class="kw">let </span><span class="kw-2">mut </span>key_data = <span class="kw">unsafe </span>{ <span class="kw-2">*</span>nss_sys::PK11_GetKeyData(sym_key.as_mut_ptr()) };
+    <span class="kw">let </span>buf = <span class="kw">unsafe </span>{ sec_item_as_slice(<span class="kw-2">&amp;mut </span>key_data)<span class="question-mark">? </span>};
+    <span class="comment">// Stop panic in swap_with_slice by returning an error if the sizes mismatch
+    </span><span class="kw">if </span>buf.len() != out.len() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(ErrorKind::InternalError.into());
+    }
+    out.swap_with_slice(buf);
+    <span class="prelude-val">Ok</span>(())
+}
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="nss" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

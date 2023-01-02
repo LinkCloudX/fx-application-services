@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["attached_database",""],["define_history_migration_functions",""],["select_count",""]],"mod":[["sql_fns",""]],"struct":[["ExecuteOnDrop","We use/abuse the mirror to perform our import, but need to clean it up afterwards. This is an RAII helper to do so."],["HistoryMigrationResult",""],["NOW",""]]};

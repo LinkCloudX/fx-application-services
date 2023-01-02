@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["BookmarkTreeNode",""],["FetchDepth","Fetch the tree starting at the specified guid. Returns a `BookmarkTreeNode`, its parent’s guid (if any), and position inside its parent."]],"fn":[["fetch_tree",""],["insert_tree",""]],"struct":[["BookmarkNode",""],["FolderNode",""],["SeparatorNode",""]]};

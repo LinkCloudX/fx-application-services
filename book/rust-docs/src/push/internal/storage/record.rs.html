@@ -1,0 +1,124 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `components/push/src/internal/storage/record.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>record.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../../normalize.css"><link rel="stylesheet" href="../../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../../ayu.css" disabled><link rel="stylesheet" href="../../../../dark.css" disabled><link rel="stylesheet" href="../../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../../storage.js"></script><script defer src="../../../../source-script.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../main.js"></script><noscript><link rel="stylesheet" href="../../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../../push/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../../push/index.html"><div class="logo-container"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../../push/index.html"><img class="rust-logo" src="../../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+</pre><pre class="rust"><code><span class="comment">/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+</span><span class="kw">use </span>rusqlite::Row;
+
+<span class="kw">use </span><span class="kw">crate</span>::error::Result;
+<span class="kw">use </span><span class="kw">crate</span>::internal::crypto::KeyV1 <span class="kw">as </span>Key;
+
+<span class="kw">use </span><span class="kw">super</span>::types::Timestamp;
+
+<span class="kw">pub type </span>ChannelID = String;
+
+<span class="attribute">#[derive(Clone, Debug, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>PushRecord {
+    <span class="doccomment">/// Designation label provided by the subscribing service
+    </span><span class="kw">pub </span>channel_id: ChannelID,
+
+    <span class="doccomment">/// Endpoint provided from the push server
+    </span><span class="kw">pub </span>endpoint: String,
+
+    <span class="doccomment">/// The receipient (service worker)&#39;s scope
+    </span><span class="kw">pub </span>scope: String,
+
+    <span class="doccomment">/// Private EC Prime256v1 key info.
+    </span><span class="kw">pub </span>key: Vec&lt;u8&gt;,
+
+    <span class="doccomment">/// Time this subscription was created.
+    </span><span class="kw">pub </span>ctime: Timestamp,
+
+    <span class="doccomment">/// VAPID public key to restrict subscription updates for only those that sign
+    /// using the private VAPID key.
+    </span><span class="kw">pub </span>app_server_key: <span class="prelude-ty">Option</span>&lt;String&gt;,
+}
+
+<span class="kw">impl </span>PushRecord {
+    <span class="doccomment">/// Create a Push Record from the Subscription info: endpoint, encryption
+    /// keys, etc.
+    </span><span class="kw">pub fn </span>new(chid: <span class="kw-2">&amp;</span>str, endpoint: <span class="kw-2">&amp;</span>str, scope: <span class="kw-2">&amp;</span>str, key: Key) -&gt; <span class="self">Self </span>{
+        <span class="comment">// XXX: unwrap
+        </span><span class="self">Self </span>{
+            channel_id: chid.to_owned(),
+            endpoint: endpoint.to_owned(),
+            scope: scope.to_owned(),
+            key: key.serialize().unwrap(),
+            ctime: Timestamp::now(),
+            app_server_key: <span class="prelude-val">None</span>,
+        }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>from_row(row: <span class="kw-2">&amp;</span>Row&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="prelude-val">Ok</span>(PushRecord {
+            channel_id: row.get(<span class="string">&quot;channel_id&quot;</span>)<span class="question-mark">?</span>,
+            endpoint: row.get(<span class="string">&quot;endpoint&quot;</span>)<span class="question-mark">?</span>,
+            scope: row.get(<span class="string">&quot;scope&quot;</span>)<span class="question-mark">?</span>,
+            key: row.get(<span class="string">&quot;key&quot;</span>)<span class="question-mark">?</span>,
+            ctime: row.get(<span class="string">&quot;ctime&quot;</span>)<span class="question-mark">?</span>,
+            app_server_key: row.get(<span class="string">&quot;app_server_key&quot;</span>)<span class="question-mark">?</span>,
+        })
+    }
+}
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="push" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

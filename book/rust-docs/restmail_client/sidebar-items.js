@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["clear_mailbox",""],["find_email","For a given restmail email, find the first email that satisfies the given predicate. If no email is found, this function sleeps for a few seconds then tries again, up to `max_tries` times."]]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["verify","Verify that the signature matches the input data."]]};

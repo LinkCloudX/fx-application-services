@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":[["uniffi_reexport_scaffolding",""]],"mod":[["api",""],["bookmark_sync",""],["db",""],["error",""],["ffi",""],["frecency",""],["hash",""],["history_sync",""],["import",""],["match_impl",""],["observation",""],["storage",""],["types",""]]};

@@ -1,0 +1,74 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `components/sync15/src/engine/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../sync15/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../sync15/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../sync15/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+</pre><pre class="rust"><code><span class="comment">/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+</span><span class="doccomment">//! This module is used by crates which need to implement a &quot;sync engine&quot;.
+//! At a high-level, a &quot;sync engine&quot; is code which knows how to take records
+//! from a sync server, apply and reconcile them with the local data, then
+//! provide records which should be uploaded to the server.
+//!
+//! Note that the &quot;sync engine&quot; does not itself talk to the server, nor does
+//! it manage the state of the remote server, nor does it do any of the
+//! encryption/decryption - that is the responsbility of the &quot;sync client&quot;, as
+//! implemented in the [client] module (or in some cases, implemented externally)
+//!
+//! There are currently 2 types of engine:
+//! * Code which implements the [crate::engine::sync_engine::SyncEngine]
+//!   trait. These are the &quot;original&quot; Rust engines, designed to be used with
+//!   the [crate::client](sync client)
+//! * Code which implements the [crate::engine::bridged_engine::BridgedEngine]
+//!   trait. These engines are a &quot;bridge&quot; between the Desktop JS Sync world and
+//!   this rust code.
+//! While these engines end up doing the same thing, the difference is due to
+//! implementation differences between the Desktop Sync client and the Rust
+//! client.
+//! We intend merging these engines - the first step will be to merge the
+//! types and payload management used by these traits, then to combine the
+//! requirements into a single trait that captures both use-cases.
+</span><span class="kw">mod </span>bridged_engine;
+<span class="kw">mod </span>changeset;
+<span class="kw">mod </span>request;
+<span class="kw">mod </span>sync_engine;
+
+<span class="kw">pub use </span>bridged_engine::{ApplyResults, BridgedEngine};
+<span class="kw">pub use </span>changeset::{IncomingChangeset, OutgoingChangeset};
+<span class="kw">pub use </span>request::{CollectionRequest, RequestOrder};
+<span class="kw">pub use </span>sync_engine::{CollSyncIds, EngineSyncAssociation, SyncEngine, SyncEngineId};
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="sync15" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

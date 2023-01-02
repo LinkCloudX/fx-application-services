@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["Capability",""],["CommandFetchReason","The reason we are fetching commands."]],"struct":[["Device",""],["Location",""],["PushSubscription",""]]};

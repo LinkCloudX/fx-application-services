@@ -1,0 +1,212 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `components/sync15/src/client/sync.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>sync.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../sync15/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../sync15/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../sync15/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+</pre><pre class="rust"><code><span class="comment">/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+</span><span class="kw">use </span><span class="kw">super</span>::coll_state::LocalCollStateMachine;
+<span class="kw">use </span><span class="kw">super</span>::coll_update::CollectionUpdate;
+<span class="kw">use </span><span class="kw">super</span>::state::GlobalState;
+<span class="kw">use </span><span class="kw">super</span>::storage_client::Sync15StorageClient;
+<span class="kw">use </span><span class="kw">crate</span>::clients_engine;
+<span class="kw">use </span><span class="kw">crate</span>::engine::{IncomingChangeset, SyncEngine};
+<span class="kw">use </span><span class="kw">crate</span>::error::Error;
+<span class="kw">use </span><span class="kw">crate</span>::telemetry;
+<span class="kw">use </span><span class="kw">crate</span>::KeyBundle;
+<span class="kw">use </span>interrupt_support::Interruptee;
+
+<span class="attribute">#[allow(clippy::too_many_arguments)]
+</span><span class="kw">pub fn </span>synchronize_with_clients_engine(
+    client: <span class="kw-2">&amp;</span>Sync15StorageClient,
+    global_state: <span class="kw-2">&amp;</span>GlobalState,
+    root_sync_key: <span class="kw-2">&amp;</span>KeyBundle,
+    clients: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>clients_engine::Engine&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
+    engine: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SyncEngine,
+    fully_atomic: bool,
+    telem_engine: <span class="kw-2">&amp;mut </span>telemetry::Engine,
+    interruptee: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Interruptee,
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    <span class="kw">let </span>collection = engine.collection_name();
+    <span class="macro">log::info!</span>(<span class="string">&quot;Syncing collection {}&quot;</span>, collection);
+
+    <span class="comment">// our global state machine is ready - get the collection machine going.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>coll_state =
+        <span class="kw">match </span>LocalCollStateMachine::get_state(engine, global_state, root_sync_key)<span class="question-mark">? </span>{
+            <span class="prelude-val">Some</span>(coll_state) =&gt; coll_state,
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="comment">// XXX - this is either &quot;error&quot; or &quot;declined&quot;.
+                </span><span class="macro">log::warn!</span>(
+                    <span class="string">&quot;can&#39;t setup for the {} collection - hopefully it works later&quot;</span>,
+                    collection
+                );
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+            }
+        };
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(clients) = clients {
+        engine.prepare_for_sync(<span class="kw-2">&amp;</span>|| clients.get_client_data())<span class="question-mark">?</span>;
+    }
+
+    <span class="kw">let </span>collection_requests = engine.get_collection_requests(coll_state.last_modified)<span class="question-mark">?</span>;
+    <span class="kw">let </span>incoming = <span class="kw">if </span>collection_requests.is_empty() {
+        <span class="macro">log::info!</span>(<span class="string">&quot;skipping incoming for {} - not needed.&quot;</span>, collection);
+        <span class="macro">vec!</span>[IncomingChangeset::new(collection, coll_state.last_modified)]
+    } <span class="kw">else </span>{
+        <span class="macro">assert_eq!</span>(collection_requests.last().unwrap().collection, collection);
+
+        <span class="kw">let </span>count = collection_requests.len();
+        collection_requests
+            .into_iter()
+            .enumerate()
+            .map(|(idx, collection_request)| {
+                interruptee.err_if_interrupted()<span class="question-mark">?</span>;
+                <span class="kw">let </span>incoming_changes =
+                    <span class="kw">super</span>::fetch_incoming(client, <span class="kw-2">&amp;mut </span>coll_state, <span class="kw-2">&amp;</span>collection_request)<span class="question-mark">?</span>;
+
+                <span class="macro">log::info!</span>(
+                    <span class="string">&quot;Downloaded {} remote changes (request {} of {})&quot;</span>,
+                    incoming_changes.changes.len(),
+                    idx,
+                    count,
+                );
+                <span class="prelude-val">Ok</span>(incoming_changes)
+            })
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, Error&gt;&gt;()<span class="question-mark">?
+    </span>};
+
+    <span class="kw">let </span>new_timestamp = incoming.last().expect(<span class="string">&quot;must have &gt;= 1&quot;</span>).timestamp;
+    <span class="kw">let </span><span class="kw-2">mut </span>outgoing = engine.apply_incoming(incoming, telem_engine)<span class="question-mark">?</span>;
+
+    interruptee.err_if_interrupted()<span class="question-mark">?</span>;
+    <span class="comment">// Bump the timestamps now just incase the upload fails.
+    // xxx - duplication below smells wrong
+    </span>outgoing.timestamp = new_timestamp;
+    coll_state.last_modified = new_timestamp;
+
+    <span class="macro">log::info!</span>(<span class="string">&quot;Uploading {} outgoing changes&quot;</span>, outgoing.changes.len());
+    <span class="kw">let </span>upload_info =
+        CollectionUpdate::new_from_changeset(client, <span class="kw-2">&amp;</span>coll_state, outgoing, fully_atomic)<span class="question-mark">?
+            </span>.upload()<span class="question-mark">?</span>;
+
+    <span class="macro">log::info!</span>(
+        <span class="string">&quot;Upload success ({} records success, {} records failed)&quot;</span>,
+        upload_info.successful_ids.len(),
+        upload_info.failed_ids.len()
+    );
+    <span class="comment">// ideally we&#39;d report this per-batch, but for now, let&#39;s just report it
+    // as a total.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>telem_outgoing = telemetry::EngineOutgoing::new();
+    telem_outgoing.sent(upload_info.successful_ids.len() + upload_info.failed_ids.len());
+    telem_outgoing.failed(upload_info.failed_ids.len());
+    telem_engine.outgoing(telem_outgoing);
+
+    engine.sync_finished(upload_info.modified_timestamp, upload_info.successful_ids)<span class="question-mark">?</span>;
+
+    <span class="macro">log::info!</span>(<span class="string">&quot;Sync finished!&quot;</span>);
+    <span class="prelude-val">Ok</span>(())
+}
+</code></pre></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="sync15" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":[["BookmarkItemRecord",""]],"struct":[["BookmarkRecord",""],["BookmarkRecordId","A bookmark record ID. Bookmark record IDs are the same as Places GUIDs, except for:"],["FolderRecord",""],["LivemarkRecord",""],["QueryRecord",""],["SeparatorRecord",""]]};
